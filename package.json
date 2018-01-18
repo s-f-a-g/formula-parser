@@ -82,6 +82,8 @@
     "webpack": "^3.2.0"
   },
   "dependencies": {
+    "bignumber.js": "4.0.0",
+    "decimal.js": "^7.1.1",
     "formulajs": "github:handsontable/formula.js",
     "tiny-emitter": "^2.0.1"
   },

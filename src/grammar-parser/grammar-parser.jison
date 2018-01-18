@@ -1,7 +1,9 @@
 /* description: Parses end evaluates mathematical expressions. */
+
 /* lexical grammar */
 %lex
 %%
+
 \s+                                                                                             {/* skip whitespace */}
 '"'("\\"["]|[^"])*'"'                                                                           {return 'STRING';}
 "'"('\\'[']|[^'])*"'"                                                                           {return 'STRING';}
@@ -11,11 +13,13 @@
 '$'[A-Za-z]+[0-9]+                                                                              {return 'MIXED_CELL';}
 [A-Za-z]+'$'[0-9]+                                                                              {return 'MIXED_CELL';}
 [A-Za-z]+[0-9]+                                                                                 {return 'RELATIVE_CELL';}
+[A-Za-z_\.\d]+(?=[!])                                                                           {return 'REFSHEET';}
 [A-Za-z\.]+(?=[(])                                                                              {return 'FUNCTION';}
 [A-Za-z]{1,}[A-Za-z_0-9]+                                                                       {return 'VARIABLE';}
 [A-Za-z_]+                                                                                      {return 'VARIABLE';}
 [0-9]+                                                                                          {return 'NUMBER';}
-'['(.*)?']'                                                                                     {return 'ARRAY';}
+'['([\w\,\;\s]*)?']'                                                                            {return 'ARRAY';}
+'{'([\w\,\;\"\.\s]*)?'}'                                                                        {return 'ARRAYCONSTANT';}
 "&"                                                                                             {return '&';}
 " "                                                                                             {return ' ';}
 [.]                                                                                             {return 'DECIMAL';}
@@ -37,6 +41,8 @@
 "!"                                                                                             {return "!";}
 "="                                                                                             {return '=';}
 "%"                                                                                             {return '%';}
+"{"                                                                                             {return '{';}
+"}"                                                                                             {return '}';}
 [#]                                                                                             {return '#';}
 <<EOF>>                                                                                         {return 'EOF';}
 /lex
@@ -138,14 +144,45 @@ expression
   | FUNCTION '(' expseq ')' {
       $$ = yy.callFunction($1, $3);
     }
+  | ARRAYCONSTANT {
+      var result = [];
+
+      var textInArray = yytext.replace('{','').replace('}','');
+
+      var arr = textInArray.split(';');
+      if(arr.length <= 1) {
+        var arr = eval("[[" + arr + "]]");
+        arr.forEach(function(item) {
+          result.push(item);
+        });
+      } else {
+        for(var i = 0; i < arr.length; i++) {
+          result.push(eval("[" + arr[i] + "]"));
+        }
+      }
+
+      $$ = result;
+    }
+  | ARRAY {
+        var result = [];
+        var arr = eval("[" + yytext + "]");
+
+        arr.forEach(function(item) {
+          result.push(item);
+        });
+        $$ = result;
+    }
   | cell
+  | refCell
+  | range
+  | refRange
   | error
   | error error
 ;
 
 cell
-   : ABSOLUTE_CELL {
-      $$ = yy.cellValue($1);
+  : ABSOLUTE_CELL {
+        $$ = yy.cellValue($1);
     }
   | RELATIVE_CELL {
       $$ = yy.cellValue($1);
@@ -153,7 +190,22 @@ cell
   | MIXED_CELL {
       $$ = yy.cellValue($1);
     }
-  | ABSOLUTE_CELL ':' ABSOLUTE_CELL {
+;
+
+refCell
+  : REFSHEET '!' ABSOLUTE_CELL {
+      $$ = yy.cellValue($3, $1);
+    }
+  | REFSHEET '!' RELATIVE_CELL {
+      $$ = yy.cellValue($3, $1);
+    }
+  | REFSHEET '!' MIXED_CELL {
+      $$ = yy.cellValue($3, $1);
+    }
+;
+
+range
+  : ABSOLUTE_CELL ':' ABSOLUTE_CELL {
       $$ = yy.rangeValue($1, $3);
     }
   | ABSOLUTE_CELL ':' RELATIVE_CELL {
@@ -182,19 +234,39 @@ cell
     }
 ;
 
+refRange
+  : REFSHEET '!' ABSOLUTE_CELL ':' ABSOLUTE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' ABSOLUTE_CELL ':' RELATIVE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' ABSOLUTE_CELL ':' MIXED_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' RELATIVE_CELL ':' ABSOLUTE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' RELATIVE_CELL ':' RELATIVE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' RELATIVE_CELL ':' MIXED_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' MIXED_CELL ':' ABSOLUTE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' MIXED_CELL ':' RELATIVE_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+  | REFSHEET '!' MIXED_CELL ':' MIXED_CELL {
+      $$ = yy.rangeValue($3, $5, $1);
+    }
+;
+
 expseq
   : expression {
       $$ = [$1];
-    }
-  | ARRAY {
-      var result = [];
-      var arr = eval("[" + yytext + "]");
-
-      arr.forEach(function(item) {
-        result.push(item);
-      });
-
-      $$ = result;
     }
   | expseq ';' expression {
       $1.push($3);

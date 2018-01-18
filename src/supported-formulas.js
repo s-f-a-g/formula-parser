@@ -232,6 +232,7 @@ const SUPPORTED_FORMULAS = [
   'MROUND',
   'MULTINOMIAL',
   'MULTIPLY',
+  'NA',
   'NE',
   'NEGBINOM.DIST',
   'NEGBINOMDIST',
@@ -389,6 +390,10 @@ const SUPPORTED_FORMULAS = [
   'XOR',
   'YEAR',
   'YEARFRAC',
+  'VLOOKUP',
+  'HLOOKUP',
+  'IFERROR',
+  'IFNA',
 ];
 
 export default SUPPORTED_FORMULAS;

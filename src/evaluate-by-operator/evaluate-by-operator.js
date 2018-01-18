@@ -1,4 +1,5 @@
 /* eslint-disable import/no-named-as-default-member */
+import Decimal from 'decimal.js';
 import add from './operator/add';
 import ampersand from './operator/ampersand';
 import divide from './operator/divide';
@@ -16,6 +17,7 @@ import {ERROR_NAME} from './../error';
 
 const availableOperators = Object.create(null);
 
+Decimal.set({ precision: 16 });
 /**
  * Evaluate values by operator id.git
  *
